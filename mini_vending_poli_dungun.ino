@@ -1,7 +1,3 @@
-// library rfid
-#include <SPI.h>
-#include <MFRC522.h>
-
 // library lcd
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
@@ -12,11 +8,11 @@
 // lcd init
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// irsensor
+// irsensor bawah
 int irsensor = 2;
 int ValueIrsensor = 0;
 
-int irsensor2 = 3;
+int irsensor2 = 3; // atas
 int ValueIrsensor2 = 0;
 
 // pilot signal
@@ -26,12 +22,12 @@ int PilotGreen = 5;
 int totalwater = 8;
 int counterwater = 0;
 
-// rfid init
-constexpr uint8_t RST_PIN = 9;     // Configurable, see typical pin layout above
-constexpr uint8_t SS_PIN = 10;     // Configurable, see typical pin layout above
-MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
-MFRC522::MIFARE_Key key;
-String tag;
+// button 
+int button = 13;
+int valuebutton = 0;
+
+int statebutton = 0;
+
 
 // var init 
 int Var = 0;
@@ -44,8 +40,7 @@ void setup() {
   Serial.begin(9600);
   lcd.begin(); // kalu error begin tukar jd init
   lcd.backlight();
-  SPI.begin(); // Init SPI bus
-  rfid.PCD_Init(); // Init MFRC522
+  pinMode(button, INPUT_PULLUP);
   myservo.attach(pinServo);
   pinMode(irsensor, INPUT);
   pinMode(irsensor2, INPUT);
@@ -67,6 +62,11 @@ void setup() {
 void loop() {
   ValueIrsensor = digitalRead(irsensor);
   ValueIrsensor2 = digitalRead(irsensor2);
+  valuebutton = digitalRead(button);
+
+  if (valuebutton == LOW && statebutton == 0){
+    statebutton = 1;
+    }
 
   if (ValueIrsensor2 == LOW){
     counterwater = totalwater;
@@ -79,12 +79,12 @@ void loop() {
   if (ValueIrsensor == LOW){
     counterwater = counterwater - 1;
     }
+
   
   switch (Var) {
   case 0:
-      RunRfid();
   
-      if (tag == "123456789"){
+      if (statebutton == 1){ // masuk code card
         digitalWrite(PilotRed, LOW);
         digitalWrite(PilotGreen, HIGH);
         myservo.write(180);
@@ -92,6 +92,17 @@ void loop() {
         myservo.write(0);
         Var = 1;
         }
+
+        // add card
+
+//      else if (tag == "123456789"){
+//        digitalWrite(PilotRed, LOW);
+//        digitalWrite(PilotGreen, HIGH);
+//        myservo.write(180);
+//        delay(2000); // 2 sec
+//        myservo.write(0);
+//        Var = 1;
+//        }
     
     break;
   case 1:
@@ -102,19 +113,8 @@ void loop() {
       digitalWrite(PilotRed, HIGH);
       digitalWrite(PilotGreen, LOW);
       Var = 0;
-      tag = "";
+      statebutton = 0;
     break;
   }
 
 }
-
-void RunRfid(){
-  if ( ! rfid.PICC_IsNewCardPresent())
-    return;
-    if (rfid.PICC_ReadCardSerial()) {
-      for (byte i = 0; i < 4; i++) {
-        tag += rfid.uid.uidByte[i];
-      }
-      Serial.println(tag);
-  }
-  }
